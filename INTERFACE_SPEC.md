@@ -1,0 +1,578 @@
+# VisionGPT 10B
+
+## Internal Engine Contract Specification
+
+Version: 0.1
+
+Status: Draft
+
+---
+
+# Table of Contents
+
+* 1. Philosophy
+* 2. Contract Rules
+* 3. Shared Types
+* 4. Perception → Scene Graph
+* 5. Scene Graph → Spatial
+* 6. Spatial → Reasoning
+* 7. Reasoning → Response
+* 8. Confidence Contracts
+* 9. Error Contracts
+* 10. Versioning Rules
+
+---
+
+# 1. Philosophy
+
+Every engine communicates through explicit contracts.
+
+No engine may depend on another engine's internals.
+
+---
+
+Allowed:
+
+```text id="m8d3ta"
+Perception
+ ↓
+ObjectSet
+ ↓
+Scene Graph
+```
+
+Forbidden:
+
+```text id="29a4bn"
+Scene Graph
+
+directly accessing
+
+Perception internals
+```
+
+---
+
+# 2. Contract Rules
+
+## Rule 1
+
+Every contract must be serializable.
+
+Allowed:
+
+```json id="fr5azx"
+{
+  "id": "obj_001"
+}
+```
+
+---
+
+Forbidden:
+
+```text id="snn6gg"
+Custom Python Objects
+```
+
+---
+
+## Rule 2
+
+Every entity requires an ID.
+
+---
+
+Good
+
+```json id="q5tqpn"
+{
+  "id": "obj_001"
+}
+```
+
+---
+
+Bad
+
+```json id="s2lrwz"
+{
+  "label": "person"
+}
+```
+
+---
+
+## Rule 3
+
+Every confidence score:
+
+```yaml id="j6fzdt"
+minimum: 0.0
+
+maximum: 1.0
+```
+
+---
+
+# 3. Shared Types
+
+---
+
+## BoundingBox
+
+```json id="plbg8e"
+{
+  "x1": 100,
+  "y1": 200,
+  "x2": 500,
+  "y2": 800
+}
+```
+
+---
+
+Rules:
+
+```text id="pfay9s"
+x2 > x1
+
+y2 > y1
+```
+
+---
+
+## Confidence
+
+```json id="i0jqah"
+{
+  "score": 0.94
+}
+```
+
+---
+
+## EntityID
+
+Format:
+
+```text id="8kj67x"
+obj_000001
+
+obj_000002
+
+obj_000003
+```
+
+---
+
+# 4. Perception → Scene Graph
+
+---
+
+## ObjectSet
+
+Output of Perception Engine.
+
+---
+
+Schema
+
+```json
+{
+  "schema_version": "1.0",
+
+  "image_id": "img_001",
+
+  "objects": [
+    {
+      "id": "obj_000001",
+
+      "label": "person",
+
+      "confidence": 0.98,
+
+      "bbox": {
+        "x1": 100,
+        "y1": 200,
+        "x2": 500,
+        "y2": 800
+      },
+
+      "attributes": {
+        "color": "blue",
+        "size": "medium"
+      }
+    }
+  ]
+}
+```
+
+---
+
+Required Fields
+
+```text id="g80s32"
+id
+
+label
+
+confidence
+
+bbox
+```
+
+---
+
+Optional Fields
+
+```text id="90rqyf"
+attributes
+```
+
+---
+
+# 5. Scene Graph → Spatial
+
+---
+
+## SceneGraph
+
+Output of Scene Graph Engine.
+
+---
+
+Schema
+
+```json
+{
+  "schema_version": "1.0",
+
+  "nodes": [
+    {
+      "id": "obj_000001",
+      "label": "person"
+    }
+  ],
+
+  "edges": [
+    {
+      "source": "obj_000001",
+
+      "target": "obj_000002",
+
+      "relation": "holding",
+
+      "confidence": 0.96
+    }
+  ]
+}
+```
+
+---
+
+Supported Relations
+
+```text id="owzaxn"
+left_of
+
+right_of
+
+above
+
+below
+
+holding
+
+touching
+
+inside
+
+outside
+
+behind
+
+in_front_of
+```
+
+---
+
+# 6. Spatial → Reasoning
+
+---
+
+## SpatialFactSet
+
+Output of Spatial Engine.
+
+---
+
+Schema
+
+```json
+{
+  "schema_version": "1.0",
+
+  "facts": [
+    {
+      "id": "fact_001",
+
+      "type": "count",
+
+      "statement": "chairs_count",
+
+      "value": 7,
+
+      "confidence": 0.97
+    }
+  ]
+}
+```
+
+---
+
+Fact Types
+
+```text id="a0ql9g"
+count
+
+distance
+
+position
+
+group
+
+layout
+```
+
+---
+
+# 7. Reasoning → Response
+
+---
+
+## ReasoningGraph
+
+Output of Reasoning Engine.
+
+---
+
+Schema
+
+```json
+{
+  "schema_version": "1.0",
+
+  "question": "How many chairs?",
+
+  "steps": [
+    {
+      "step": 1,
+
+      "description": "Detected chairs",
+
+      "evidence": [
+        "fact_001"
+      ]
+    }
+  ],
+
+  "conclusion": {
+    "answer": "7"
+  }
+}
+```
+
+---
+
+Requirements
+
+```text id="br5y0v"
+Every step must reference evidence.
+
+Every conclusion must reference facts.
+```
+
+---
+
+# 8. Confidence Contracts
+
+Every layer emits confidence.
+
+---
+
+Perception
+
+```json
+{
+  "confidence": 0.98
+}
+```
+
+---
+
+Scene Graph
+
+```json
+{
+  "confidence": 0.95
+}
+```
+
+---
+
+Spatial
+
+```json
+{
+  "confidence": 0.94
+}
+```
+
+---
+
+Reasoning
+
+```json
+{
+  "confidence": 0.92
+}
+```
+
+---
+
+Response
+
+```json
+{
+  "confidence": 0.91
+}
+```
+
+---
+
+Final Confidence
+
+```json
+{
+  "confidence": 0.93
+}
+```
+
+---
+
+# 9. Error Contracts
+
+---
+
+Every engine returns:
+
+```json
+{
+  "success": true,
+
+  "data": {}
+}
+```
+
+---
+
+Failure
+
+```json
+{
+  "success": false,
+
+  "error": {
+    "code": "OBJECT_NOT_FOUND",
+
+    "message": "Object missing"
+  }
+}
+```
+
+---
+
+Error Format
+
+```json
+{
+  "code": "",
+  "message": "",
+  "details": {}
+}
+```
+
+---
+
+# 10. Versioning Rules
+
+All schemas require versioning.
+
+---
+
+Example
+
+```json
+{
+  "schema_version": "1.0"
+}
+```
+
+---
+
+Future
+
+```json
+{
+  "schema_version": "2.0"
+}
+```
+
+---
+
+Backward Compatibility
+
+Required for:
+
+```text id="7nx20f"
+1.x → 1.y
+```
+
+---
+
+Not Required for:
+
+```text id="n22n7x"
+1.x → 2.x
+```
+
+---
+
+# Interface Principle
+
+Every answer generated by VisionGPT must be reconstructable.
+
+```text id="cbvfe6"
+ObjectSet
+ ↓
+
+SceneGraph
+ ↓
+
+SpatialFactSet
+ ↓
+
+ReasoningGraph
+ ↓
+
+Response
+```
+
+Each layer must expose a stable contract.
+
+Each layer must be independently testable.
+
+Each layer must be independently replaceable.
+
+No component may rely on undocumented behavior.
