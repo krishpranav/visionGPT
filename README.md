@@ -253,30 +253,6 @@ These documents define the project before implementation begins.
 
 ---
 
-## Development Philosophy
-
-VisionGPT follows a strict rule:
-
-```text
-No Placeholder Code
-
-No TODO Implementations
-
-No Fake Training Loops
-
-No Mock Architectures
-
-No Undocumented Interfaces
-```
-
-Every file must:
-
-* compile
-* be testable
-* have documentation
-* satisfy a specification
-
----
 
 ## Contributing
 
