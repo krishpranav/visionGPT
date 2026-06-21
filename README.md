@@ -278,56 +278,6 @@ Every file must:
 
 ---
 
-## Current Status
-
-Phase:
-
-```text
-Architecture Design
-```
-
-Completed:
-
-* Model Specification
-* Architecture Specification
-* Dataset Specification
-* Training Specification
-* Evaluation Specification
-* Repository Specification
-* Interface Specification
-
-Next:
-
-```text
-Core Contracts
-```
-
-```text
-models/shared/contracts/
-
-├── object_set.py
-├── scene_graph.py
-├── spatial_fact_set.py
-├── reasoning_graph.py
-└── errors.py
-```
-
----
-
-## Long-Term Goals
-
-VisionGPT aims to advance visual reasoning in:
-
-* Robotics
-* Autonomous Systems
-* Accessibility
-* Scientific Research
-* Industrial Inspection
-* Medical Imaging
-* Document Understanding
-
----
-
 ## Contributing
 
 VisionGPT is being built as an open architecture project focused on reasoning-first visual intelligence.
