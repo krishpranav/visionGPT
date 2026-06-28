@@ -1,24 +1,37 @@
 from __future__ import annotations
-import math
+
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 from torch import nn
+
+from models.shared.initialization.weight_init import (
+    initialize_linear,
+)
 
 
 class Linear(nn.Module):
     """
-    Standard dense projection used throughout VisionGPT.
+    VisionGPT linear projection layer.
 
-    This layer intentionally wraps ``torch.nn.Linear`` to provide
-    a stable abstraction for future optimizations such as:
+    This class intentionally wraps the standard
+    linear projection behind a stable interface.
+
+    Future implementations may transparently swap
+    the internal implementation for:
 
     - Tensor Parallel Linear
     - Quantized Linear
-    - LoRA adapters
-    - Fused CUDA kernels
+    - LoRA Linear
+    - Fused CUDA Kernels
 
-    without requiring changes to model code.
+    without changing model code.
     """
+
+    __constants__ = (
+        "in_features",
+        "out_features",
+    )
 
     def __init__(
         self,
@@ -30,16 +43,23 @@ class Linear(nn.Module):
         super().__init__()
 
         if in_features <= 0:
-            raise ValueError("in_features must be greater than zero")
+            raise ValueError(
+                "in_features must be greater than zero."
+            )
 
         if out_features <= 0:
-            raise ValueError("out_features must be greater than zero")
+            raise ValueError(
+                "out_features must be greater than zero."
+            )
 
         self.in_features = in_features
         self.out_features = out_features
 
         self.weight = nn.Parameter(
-            torch.empty(out_features, in_features)
+            torch.empty(
+                out_features,
+                in_features,
+            )
         )
 
         if bias:
@@ -47,23 +67,29 @@ class Linear(nn.Module):
                 torch.empty(out_features)
             )
         else:
-            self.register_parameter("bias", None)
+            self.register_parameter(
+                "bias",
+                None,
+            )
 
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
         """
-        Xavier uniform initialization.
+        Initialize learnable parameters.
 
-        This is intentionally centralized so future initialization
-        strategies can be introduced without changing every model.
+        All initialization is delegated to the
+        centralized initialization subsystem.
         """
 
-        nn.init.xavier_uniform_(self.weight)
+        initialize_linear(
+            self.weight,
+            self.bias,
+        )
 
-        if self.bias is not None:
-            bound = 1.0 / math.sqrt(self.in_features)
-            nn.init.uniform_(self.bias, -bound, bound)
+    @property
+    def bias_enabled(self) -> bool:
+        return self.bias is not None
 
     def forward(
         self,
@@ -72,16 +98,29 @@ class Linear(nn.Module):
         """
         Parameters
         ----------
-        inputs:
-            Tensor of shape (..., in_features)
+        inputs
+
+            Shape:
+
+                (..., in_features)
 
         Returns
         -------
         Tensor
-            Tensor of shape (..., out_features)
+
+            Shape:
+
+                (..., out_features)
         """
 
-        return torch.nn.functional.linear(
+        if inputs.shape[-1] != self.in_features:
+            raise ValueError(
+                f"Expected last dimension "
+                f"{self.in_features}, "
+                f"received {inputs.shape[-1]}."
+            )
+
+        return F.linear(
             inputs,
             self.weight,
             self.bias,
@@ -91,5 +130,5 @@ class Linear(nn.Module):
         return (
             f"in_features={self.in_features}, "
             f"out_features={self.out_features}, "
-            f"bias={self.bias is not None}"
+            f"bias={self.bias_enabled}"
         )
