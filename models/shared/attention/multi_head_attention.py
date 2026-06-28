@@ -16,7 +16,7 @@ class MultiHeadAttention(nn.Module):
     """
     VisionGPT Multi-Head Self-Attention.
 
-    Architecture
+    Pipeline
 
         Input
           │
@@ -24,24 +24,23 @@ class MultiHeadAttention(nn.Module):
       QKV Projection
           │
           ▼
-    Scaled Dot Product
+      Attention Kernel
           │
           ▼
-     Output Projection
+      Head Concatenation
           │
           ▼
-         Output
-
-    Input
-    -----
-
-        [B, N, D]
-
-    Output
-    ------
-
-        [B, N, D]
+      Output Projection
+          │
+          ▼
+          Output
     """
+
+    __constants__ = (
+        "embedding_dim",
+        "num_heads",
+        "head_dim",
+    )
 
     def __init__(
         self,
@@ -65,20 +64,24 @@ class MultiHeadAttention(nn.Module):
 
         if embedding_dim % num_heads != 0:
             raise ValueError(
-                "embedding_dim must be divisible by "
-                "num_heads."
+                "embedding_dim must be divisible by num_heads."
             )
 
         self.embedding_dim = embedding_dim
         self.num_heads = num_heads
+        self.head_dim = (
+            embedding_dim // num_heads
+        )
 
         self.qkv_projection = QKVProjection(
             embedding_dim=embedding_dim,
             num_heads=num_heads,
         )
 
-        self.attention = ScaledDotProductAttention(
-            attention_dropout=attention_dropout,
+        self.attention = (
+            ScaledDotProductAttention(
+                attention_dropout=attention_dropout,
+            )
         )
 
         self.output_projection = Linear(
@@ -107,7 +110,6 @@ class MultiHeadAttention(nn.Module):
 
         Returns
         -------
-
         Tensor
 
             Shape:
@@ -117,13 +119,19 @@ class MultiHeadAttention(nn.Module):
 
         if inputs.ndim != 3:
             raise ValueError(
-                "Expected tensor with shape "
-                "[B, N, D]."
+                "Expected tensor with shape [B, N, D]."
             )
 
-        batch_size, sequence_length, _ = (
+        batch_size, sequence_length, embedding_dim = (
             inputs.shape
         )
+
+        if embedding_dim != self.embedding_dim:
+            raise ValueError(
+                f"Expected embedding dimension "
+                f"{self.embedding_dim}, "
+                f"received {embedding_dim}."
+            )
 
         queries, keys, values = (
             self.qkv_projection(inputs)
@@ -160,5 +168,6 @@ class MultiHeadAttention(nn.Module):
     def extra_repr(self) -> str:
         return (
             f"embedding_dim={self.embedding_dim}, "
-            f"num_heads={self.num_heads}"
+            f"num_heads={self.num_heads}, "
+            f"head_dim={self.head_dim}"
         )
